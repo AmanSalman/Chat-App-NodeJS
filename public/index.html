@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>One-to-One Chat</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="chat-container">
+      <header>
+        <h1>Chat Application</h1>
+      </header>
+      <main>
+        <div class="chat-window">
+          <ul id="chatMessages"></ul>
+        </div>
+        <form id="chatForm">
+          <input
+            type="text"
+            id="toInput"
+            placeholder="Recipient username"
+            required
+          />
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Type a message..."
+            required
+          />
+          <button type="submit">Send</button>
+        </form>
+      </main>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+      const socket = io();
+
+      // Define default avatars and colors
+      const avatars = [
+        "https://robohash.org/user1", // Avatar for user1
+        "https://robohash.org/user2", // Avatar for user2
+        "https://robohash.org/user3", // Avatar for user3
+        "https://robohash.org/user4", // Avatar for user4
+      ];
+
+      const userColors = {
+        user1: "#FF5733",
+        user2: "#33FF57",
+        user3: "#3357FF",
+        user4: "#F333FF",
+      };
+
+      const username = prompt("Enter your username:");
+      const avatar = avatars[Math.floor(Math.random() * avatars.length)];
+      const userColor = userColors[username] || "#333";
+
+      socket.emit("setUsername", { username, avatar, userColor });
+
+      // Display incoming messages
+      socket.on("chatMessage", ({ from, avatar, message, userColor }) => {
+        const chatMessages = document.getElementById("chatMessages");
+        const messageElement = document.createElement("li");
+        messageElement.classList.add(from === username ? "sent" : "received");
+
+        messageElement.innerHTML = `
+          <div class="message-container" style="border-left: 4px solid ${userColor}">
+            <img src="${avatar}" alt="${from}'s avatar" class="avatar">
+            <div class="message-content">
+              <span class="username" style="color: ${userColor}">${from}</span>: 
+              <span class="message">${message}</span>
+            </div>
+          </div>
+        `;
+        chatMessages.appendChild(messageElement);
+      });
+
+      // Handle form submission
+      const chatForm = document.getElementById("chatForm");
+      chatForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const toUsername = document.getElementById("toInput").value;
+        const message = document.getElementById("messageInput").value;
+
+        socket.emit("privateMessage", { toUsername, message });
+
+        // Display sent message
+        const chatMessages = document.getElementById("chatMessages");
+        const messageElement = document.createElement("li");
+        messageElement.classList.add("sent");
+
+        messageElement.innerHTML = `
+          <div class="message-container" style="border-left: 4px solid ${userColor}">
+            <img src="${avatar}" alt="Your avatar" class="avatar">
+            <div class="message-content">
+              <span class="username" style="color: ${userColor}">Me (to ${toUsername})</span>: 
+              <span class="message">${message}</span>
+            </div>
+          </div>
+        `;
+        chatMessages.appendChild(messageElement);
+
+        // Clear input
+        document.getElementById("messageInput").value = "";
+      });
+    </script>
+  </body>
+</html>
