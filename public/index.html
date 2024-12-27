@@ -3,25 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One-to-One Chat</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <title>Group Chat</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="chat-container">
+    <!-- Section for entering username -->
+    <div id="usernameSection">
+      <h2 id="chat-welcome">💭Chatty App</h2>
+      <input
+        type="text"
+        id="usernameInput"
+        placeholder="Enter your username"
+        required
+      />
+      <button id="submitUsernameButton">Start Chat</button>
+    </div>
+
+    <!-- Chat Container (hidden until username is entered) -->
+    <div class="chat-container" style="display: none">
       <header>
-        <h1>Chat Application</h1>
+        <h1></h1>
       </header>
       <main>
         <div class="chat-window">
           <ul id="chatMessages"></ul>
         </div>
         <form id="chatForm">
-          <input
-            type="text"
-            id="toInput"
-            placeholder="Recipient username"
-            required
-          />
           <input
             type="text"
             id="messageInput"
@@ -37,12 +48,12 @@
     <script>
       const socket = io();
 
-      // Define default avatars and colors
+      // Default avatars and colors for users
       const avatars = [
-        "https://robohash.org/user1", // Avatar for user1
-        "https://robohash.org/user2", // Avatar for user2
-        "https://robohash.org/user3", // Avatar for user3
-        "https://robohash.org/user4", // Avatar for user4
+        "https://robohash.org/user1",
+        "https://robohash.org/user2",
+        "https://robohash.org/user3",
+        "https://robohash.org/user4",
       ];
 
       const userColors = {
@@ -52,58 +63,76 @@
         user4: "#F333FF",
       };
 
-      const username = prompt("Enter your username:");
-      const avatar = avatars[Math.floor(Math.random() * avatars.length)];
-      const userColor = userColors[username] || "#333";
+      let username = "";
+      let userColor = "";
+      let avatar = "";
 
-      socket.emit("setUsername", { username, avatar, userColor });
+      document
+        .getElementById("submitUsernameButton")
+        .addEventListener("click", () => {
+          username = document.getElementById("usernameInput").value;
 
-      // Display incoming messages
+          if (username) {
+            avatar = avatars[Math.floor(Math.random() * avatars.length)];
+            userColor = userColors[username] || "#333"; // Assign userColor
+
+            // Emit the set username to the server
+            socket.emit("setUsername", { username, avatar, userColor });
+
+            // Hide the username input section and show the chat
+            document.getElementById("usernameSection").style.display = "none";
+            document.querySelector(".chat-container").style.display = "block";
+            console.log(document.querySelector("header h1"));
+            document.querySelector(
+              "header h1"
+            ).innerHTML = `<i class="fa-regular fa-user"></i> ${username}`;
+          } else {
+            alert("Please enter a username!");
+          }
+        });
+
+      // Display incoming messages (this is for both sent and received messages)
       socket.on("chatMessage", ({ from, avatar, message, userColor }) => {
+        // Skip appending if the message is already sent by the current user
+        if (from !== username) {
+          appendMessage(from, message, userColor, avatar);
+        }
+      });
+
+      document
+        .getElementById("chatForm")
+        .addEventListener("submit", (event) => {
+          event.preventDefault();
+          const message = document.getElementById("messageInput").value;
+          if (message) {
+            // Emit the message to the server
+            socket.emit("groupMessage", { message, username });
+
+            // Append the message locally without emitting it again
+            appendMessage(username, message, userColor, avatar);
+            document.getElementById("messageInput").value = "";
+          }
+        });
+
+      // Function to append the message to the chat
+      function appendMessage(from, message, userColor, avatar) {
         const chatMessages = document.getElementById("chatMessages");
         const messageElement = document.createElement("li");
         messageElement.classList.add(from === username ? "sent" : "received");
 
         messageElement.innerHTML = `
-          <div class="message-container" style="border-left: 4px solid ${userColor}">
+          <div class="message-container">
             <img src="${avatar}" alt="${from}'s avatar" class="avatar">
             <div class="message-content">
-              <span class="username" style="color: ${userColor}">${from}</span>: 
+              <span class="username" style="color: ${userColor}">
+                ${from === username ? "Me" : from}
+              </span>:
               <span class="message">${message}</span>
             </div>
           </div>
         `;
         chatMessages.appendChild(messageElement);
-      });
-
-      // Handle form submission
-      const chatForm = document.getElementById("chatForm");
-      chatForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const toUsername = document.getElementById("toInput").value;
-        const message = document.getElementById("messageInput").value;
-
-        socket.emit("privateMessage", { toUsername, message });
-
-        // Display sent message
-        const chatMessages = document.getElementById("chatMessages");
-        const messageElement = document.createElement("li");
-        messageElement.classList.add("sent");
-
-        messageElement.innerHTML = `
-          <div class="message-container" style="border-left: 4px solid ${userColor}">
-            <img src="${avatar}" alt="Your avatar" class="avatar">
-            <div class="message-content">
-              <span class="username" style="color: ${userColor}">Me (to ${toUsername})</span>: 
-              <span class="message">${message}</span>
-            </div>
-          </div>
-        `;
-        chatMessages.appendChild(messageElement);
-
-        // Clear input
-        document.getElementById("messageInput").value = "";
-      });
+      }
     </script>
   </body>
 </html>
