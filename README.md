@@ -41,7 +41,6 @@ Before running the application, ensure that you have **Node.js** installed. You 
    http://localhost:3000
    ```
 ## Folder Structure
-
 - **/public**: Contains the static files (HTML, CSS, and JavaScript files for the frontend).
 - **/handlers**: Contains server-side socket logic.
 - **app.mjs**: The Express app setup.
